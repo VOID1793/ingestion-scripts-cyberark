@@ -6,25 +6,29 @@
 """Fetch logs from the CyberArk Audit API and ingest them to SecOps."""
 
 import json
+import os # For TESTING! with outfiles!
 import base64
 from datetime import datetime, timezone
+import requests
 
 # from google.cloud import storage
 
 # from common import ingest
 # from common import utils
-import requests
+
 
 # CyberArk Identity Basic Auth. ID
 CYBERARK_OAUTH_CLIENT_ID = input("id")
 # CyberArk Identity Basic Auth. Secret
 CYBERARK_OAUTH_CLIENT_SECRET = input("secret")
 # CyberArk Audit API Key
-CYBERARK_AUDIT_API_KEY = ""
+CYBERARK_AUDIT_API_KEY = input("audit-key")
 # CyberArk Identity Base URL for the SIEM Integration WebApp
-CYBERARK_IDENTITY_SIEM_APP_URL = input("url")
+CYBERARK_IDENTITY_SIEM_APP_URL = input("s-url")
 # CyberArk Audit Base URL
-CYBERARK_AUDIT_BASEURL = ""
+CYBERARK_AUDIT_REF_URL = input("a-url")
+# CyberArk Audit log retrieval URL
+CYBERARK_AUDIT_RESULT_URL = input("result-url")
 # Google Storage Account Name
 GCP_BUCKET_NAME = ""
 
@@ -43,7 +47,7 @@ def build_query_body(start_date: str) -> str:
     query = {
         "filterModel": {
             "date": {
-                "dateFrom": start_date,
+                "dateFrom": "2026-02-25T00:00:00.000Z", #start_date #TESTING HARD CODED DATE RANGE
                 "dateTo"  : current_date
             }
         }
@@ -64,7 +68,6 @@ def get_identity_siem_auth(client_id: str, client_secret: str, siem_url: str) ->
     id_headers = {
         "Authorization" : f"Basic {secret_header_value_b64}",
         "Content-Type": "application/x-www-form-urlencoded"
-    
     }
 
     id_body = {
@@ -92,14 +95,55 @@ def get_identity_siem_auth(client_id: str, client_secret: str, siem_url: str) ->
 
     
 
-
 # Function to retrieve a CursorRef from Audit that represents the query for the range assigned
-# def get_cursor_ref(identity_token: str) -> str:
+def get_logs(query: str, audit_cursor_url: str, audit_results_url: str, audit_api_key: str, bearer_token: str) -> str:
+    print("Retrieving cursor reference... ")
+
+    audit_headers = {
+        "Authorization" : f"Bearer {bearer_token}",
+        "x-api-key"     : audit_api_key,
+        "Content-Type"  : "application/json"
+    }
+
+    try:
+        audit_response = requests.post(
+            url=audit_cursor_url,
+            
+            data=query,
+
+            headers=audit_headers
+        )
+
+        if audit_response.status_code == 200:
+        
+            cursorRef = audit_response.json()
+            print("Retrieving log payload... ")
+
+            body = {"cursorRef" : (cursorRef.get("cursorRef"))}
+            print(body)
+            
+            try:
+                log_payload_response = requests.post(
+                    url=audit_results_url,
+
+                    json=body,
+
+                    headers=audit_headers
+                )
+
+                if log_payload_response.status_code == 200:
+
+                    log_payload = log_payload_response.json()
+
+                    return log_payload
+
+            except requests.exceptions.RequestException as exc:
+                print("Network/HTTP error:", str(exc))
+
+    except requests.exceptions.RequestException as exc:
+        print("Network/HTTP error:", str(exc))
 
 
-
-# Function to use the CursorRef to retrieve the actual log payload
-# def get_log_data(identity_token: str, cursor_ref: str, audit_api_key: str) -> str:
 
 
 
@@ -116,7 +160,13 @@ def get_identity_siem_auth(client_id: str, client_secret: str, siem_url: str) ->
 # Main function
 def main():
     token = get_identity_siem_auth(CYBERARK_OAUTH_CLIENT_ID, CYBERARK_OAUTH_CLIENT_SECRET, CYBERARK_IDENTITY_SIEM_APP_URL)
-    print(token)
+
+    query = build_query_body("dummy")
+
+    logs = get_logs(query, CYBERARK_AUDIT_REF_URL, CYBERARK_AUDIT_RESULT_URL, CYBERARK_AUDIT_API_KEY, token)
+    
+    # with open('audit.json', 'w') as f:
+    #     json.dump(logs, f, indent=4)
 
 if __name__ == "__main__":
     main()
