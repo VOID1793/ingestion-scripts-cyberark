@@ -18,19 +18,19 @@ import requests
 
 
 # CyberArk Identity Basic Auth. ID
-CYBERARK_OAUTH_CLIENT_ID = input("id")
+CYBERARK_OAUTH_CLIENT_ID = (os.environ["CYBERARK_OAUTH_CLIENT_ID"])
 # CyberArk Identity Basic Auth. Secret
-CYBERARK_OAUTH_CLIENT_SECRET = input("secret")
+CYBERARK_OAUTH_CLIENT_SECRET = (os.environ["CYBERARK_OAUTH_CLIENT_SECRET"])
 # CyberArk Audit API Key
-CYBERARK_AUDIT_API_KEY = input("audit-key")
-# CyberArk Identity Base URL for the SIEM Integration WebApp
-CYBERARK_IDENTITY_SIEM_APP_URL = input("s-url")
-# CyberArk Audit Base URL
-CYBERARK_AUDIT_REF_URL = input("a-url")
-# CyberArk Audit log retrieval URL
-CYBERARK_AUDIT_RESULT_URL = input("result-url")
+CYBERARK_AUDIT_API_KEY = (os.environ["CYBERARK_AUDIT_API_KEY"])
+# CyberArk Identity URL for the SIEM Integration WebApp
+CYBERARK_IDENTITY_SIEM_APP_ID = (os.environ["CYBERARK_IDENTITY_SIEM_APP_ID"])
+#CyberArk Identity Subdomain 
+CYBERARK_IDENTITY_SUBDOMAIN = (os.environ["CYBERARK_IDENTITY_SUBDOMAIN"])
+# CyberArk Subdomain as it would appear in the Audit URL
+CYBERARK_ISPSS_SUBDOMAIN = (os.environ["CYBERARK_ISPSS_SUBDOMAIN"])
 # Google Storage Account Name
-GCP_BUCKET_NAME = ""
+# GCP_BUCKET_NAME = (os.environ["GCP_BUCKET_NAME"])
 
 # Function to retrieve the last range of logs from the Google Storage location
 # def get_last_range() -> str:
@@ -61,8 +61,9 @@ def build_query_body(start_date: str) -> str:
 
 
 # Function to authenticate to the CyberArk SIEM Web Application in Identity and retrieve an Auth Token
-def get_identity_siem_auth(client_id: str, client_secret: str, siem_url: str) -> str:
+def get_identity_siem_auth(client_id: str, client_secret: str, id_subdomain: str, siem_app_id: str) -> str:
     print("Authenticating to Identity's SIEM WebApplication... ")
+    siem_url = f"https://{id_subdomain}.id.cyberark.cloud/OAuth2/token/{siem_app_id}"
 
     secret_header_value_b64 = base64.b64encode(f"{client_id}:{client_secret}".encode("utf-8")).decode("utf-8")
 
@@ -97,8 +98,11 @@ def get_identity_siem_auth(client_id: str, client_secret: str, siem_url: str) ->
     
 
 # Function to retrieve a CursorRef from Audit that represents the query for the range assigned
-def get_logs(query: str, audit_cursor_url: str, audit_results_url: str, audit_api_key: str, bearer_token: str) -> str:
+def get_logs(query: str, audit_subdomain: str, audit_api_key: str, bearer_token: str) -> str:
     print("Retrieving cursor reference... ")
+
+    audit_cursor_url = f"https://{audit_subdomain}.audit.cyberark.cloud/api/audits/stream/createQuery"
+    audit_results_url = f"https://{audit_subdomain}.audit.cyberark.cloud/api/audits/stream/results"
 
     audit_headers = {
         "Authorization" : f"Bearer {bearer_token}",
@@ -160,11 +164,11 @@ def get_logs(query: str, audit_cursor_url: str, audit_results_url: str, audit_ap
 
 # Main function
 def main():
-    token = get_identity_siem_auth(CYBERARK_OAUTH_CLIENT_ID, CYBERARK_OAUTH_CLIENT_SECRET, CYBERARK_IDENTITY_SIEM_APP_URL)
+    token = get_identity_siem_auth(CYBERARK_OAUTH_CLIENT_ID, CYBERARK_OAUTH_CLIENT_SECRET, CYBERARK_IDENTITY_SUBDOMAIN, CYBERARK_IDENTITY_SIEM_APP_ID)
 
     query = build_query_body("dummy")
 
-    logs = get_logs(query, CYBERARK_AUDIT_REF_URL, CYBERARK_AUDIT_RESULT_URL, CYBERARK_AUDIT_API_KEY, token)
+    logs = get_logs(query, CYBERARK_ISPSS_SUBDOMAIN, CYBERARK_AUDIT_API_KEY, token)
     
     with open('audit.json', 'w') as f:
         json.dump(logs, f, indent=4)

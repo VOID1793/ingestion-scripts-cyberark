@@ -9,10 +9,10 @@ This script fetches batched logs from CyberArk Audit and sends them to Google Se
 | CYBERARK_OAUTH_CLIENT_ID | OAuth Confidential Username for SIEM-Integration | Yes | - | Yes |
 | CYBERARK_OAUTH_CLIENT_SECRET | OAuth Confidential Secret for SIEM-Integration | Yes | - | Yes |
 | CYBERARK_AUDIT_API_KEY | CyberArk Audit "Third Party SIEM Integration" API Key | Yes | - | Yes
-| CYBERARK_IDENTITY_SIEM_APP_URL | CyberArk Identity WebApp Token Full-URL for your "Third Party SIEM Integration" | Yes | - | Yes
-| CYBERARK_AUDIT_REF_URL | CyberArk Audit "createQuery" API URL for your tenant | Yes | - | Yes
-| CYBERARK_AUDIT_RESULT_URL | CyberArk Audit "results" API URL | Yes | - | Yes
-| GCP_BUCKET_NAME |GCP Storage Bucket name for where to deposit the time state file | Yes | - | Yes
+| CYBERARK_IDENTITY_SIEM_APP_ID | CyberArk Identity WebApp Oauth2 AppID for your "Third Party SIEM Integration" | Yes | - | Yes
+| CYBERARK_IDENTITY_SUBDOMAIN | CyberArk Identity Tenant ID | Yes | - | Yes
+| CYBERARK_ISPSS_SUBDOMAIN | CyberArk shared services subdomain | Yes | - | Yes
+| GCP_BUCKET_NAME | GCP Storage Bucket name for where to deposit the time state file | Yes | - | Yes
 
 ## Relevant Documentation
 
