@@ -10,6 +10,9 @@ import os # For TESTING! with outfiles!
 import base64
 from datetime import datetime, timezone
 import requests
+from oauthlib.oauth2 import BackendApplicationClient
+from requests_oauthlib import OAuth2Session
+from requests.auth import HTTPBasicAuth
 
 # from google.cloud import storage
 
@@ -63,37 +66,20 @@ def build_query_body(start_date: str) -> str:
 # Function to authenticate to the CyberArk SIEM Web Application in Identity and retrieve an Auth Token
 def get_identity_siem_auth(client_id: str, client_secret: str, id_subdomain: str, siem_app_id: str) -> str:
     print("Authenticating to Identity's SIEM WebApplication... ")
-    siem_url = f"https://{id_subdomain}.id.cyberark.cloud/OAuth2/token/{siem_app_id}"
-
-    secret_header_value_b64 = base64.b64encode(f"{client_id}:{client_secret}".encode("utf-8")).decode("utf-8")
-
-    id_headers = {
-        "Authorization" : f"Basic {secret_header_value_b64}",
-        "Content-Type": "application/x-www-form-urlencoded"
-    }
-
-    id_body = {
-        "grant_type" : "client_credentials",
-        "scope"      : "isp.audit.events:read"
-    }
-
+    siem_url = f"https://{id_subdomain}.id.cyberark.cloud/OAuth2/token/{siem_app_id}" 
+    
     try:
-        identity_response = requests.post(
-            url=siem_url,
+        id_auth = HTTPBasicAuth(client_id, client_secret)
+        scope   = "isp.audit.events:read"
+        client  = BackendApplicationClient(client_id=client_id, scope=scope)
+        oauth2  = OAuth2Session(client=client, scope=scope)
+        token_payload   = oauth2.fetch_token(token_url=siem_url, auth=id_auth)
+        token_data = token_payload.get("access_token")
 
-            data=id_body,
-
-            headers=id_headers
-        )
-
-        if identity_response.status_code == 200:
-            
-            token_data = identity_response.json()
-
-            return token_data.get("access_token")
-
-    except requests.exceptions.RequestException as exc:
-        print("Network/HTTP error:", str(exc))
+        return token_data
+    except:
+        print("An error with your request occurred. Please check your given subdomain and app_id! ")
+        sys.exit()
 
     
 
@@ -125,7 +111,6 @@ def get_logs(query: str, audit_subdomain: str, audit_api_key: str, bearer_token:
             print("Retrieving log payload... ")
 
             body = {"cursorRef" : (cursorRef.get("cursorRef"))}
-            print(body)
             
             try:
                 log_payload_response = requests.post(
@@ -141,14 +126,14 @@ def get_logs(query: str, audit_subdomain: str, audit_api_key: str, bearer_token:
                     log_payload = log_payload_response.json()
 
                     return log_payload
-
+                    
             except requests.exceptions.RequestException as exc:
                 print("Network/HTTP error:", str(exc))
+        else:
+            print(audit_response.json())
 
     except requests.exceptions.RequestException as exc:
         print("Network/HTTP error:", str(exc))
-
-
 
 
 
