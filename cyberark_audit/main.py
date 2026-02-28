@@ -41,13 +41,14 @@ def build_query_body(start_date: str) -> str:
     print("Building the Audit query... ")
 
     now_utc = datetime.now(timezone.utc)
-    current_date = now_utc.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+    current_date = now_utc.strftime("%Y-%m-%dT%H:%M:%SZ") + "Z"
     print(current_date)
 
     query = {
+        
         "filterModel": {
             "date": {
-                "dateFrom": "2026-02-25T00:00:00.000Z", #start_date #TESTING HARD CODED DATE RANGE
+                "dateFrom": "2026-02-25T00:00:00Z", #start_date #TESTING HARD CODED DATE RANGE
                 "dateTo"  : current_date
             }
         }
@@ -165,8 +166,8 @@ def main():
 
     logs = get_logs(query, CYBERARK_AUDIT_REF_URL, CYBERARK_AUDIT_RESULT_URL, CYBERARK_AUDIT_API_KEY, token)
     
-    # with open('audit.json', 'w') as f:
-    #     json.dump(logs, f, indent=4)
+    with open('audit.json', 'w') as f:
+        json.dump(logs, f, indent=4)
 
 if __name__ == "__main__":
     main()
