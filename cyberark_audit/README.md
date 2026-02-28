@@ -1,3 +1,59 @@
+# CyberArk Audit
+
+This script fetches batched logs from CyberArk Audit and sends them to Google SecOps
+
+## CyberArk ENV Variables
+
+| Variable | Description | Required | Default | Secret |
+| --- | --- | --- | --- | --- |
+| CYBERARK_OAUTH_CLIENT_ID | OAuth Confidential Username for SIEM-Integration | Yes | - | Yes |
+| CYBERARK_OAUTH_CLIENT_SECRET | OAuth Confidential Secret for SIEM-Integration | Yes | - | Yes |
+| CYBERARK_AUDIT_API_KEY | CyberArk Audit "Third Party SIEM Integration" API Key | Yes | - | Yes
+| CYBERARK_IDENTITY_SIEM_APP_URL | CyberArk Identity WebApp Token Full-URL for your "Third Party SIEM Integration" | Yes | - | Yes
+| CYBERARK_AUDIT_REF_URL | CyberArk Audit "createQuery" API URL for your tenant | Yes | - | Yes
+| CYBERARK_AUDIT_RESULT_URL | CyberArk Audit "results" API URL | Yes | - | Yes
+| GCP_BUCKET_NAME |GCP Storage Bucket name for where to deposit the time state file | Yes | - | Yes
+
+## Relevant Documentation
+
+* [Identity WebApp Creation](https://docs.cyberark.com/admin-space/latest/en/content/siem-integration/siem-export-3rd-party.htm)
+* [SIEM Integration API](https://docs.cyberark.com/audit/latest/en/content/audit/isp_siem-integration-api.htm)
+
+## Test CURL Templates
+
+```shell
+curl --request POST \
+  --url https://<identity_id>.id.cyberark.cloud/OAuth2/Token/<oauth2_app> \
+  --header 'authorization: Basic <b64 encoded user:pass>' \
+  --header 'content-type: application/x-www-form-urlencoded' \
+  --data grant_type=client_credentials \
+  --data scope=isp.audit.events:read
+
+curl --request POST \
+  --url https://<tenant>-<region>.audit.cyberark.cloud/api/audits/stream/createQuery \
+  --header 'authorization: Bearer <access_token>' \
+  --header 'content-type: application/json' \
+  --header 'x-api-key: <api-key>' \
+  --data '{
+  "filterModel": {
+    "date": {
+      "dateFrom": "2026-02-25T00:00:00.000Z"
+    }
+  }
+}'
+
+curl --request POST \
+  --url https://<tenant>-<region>.audit.cyberark.cloud/api/audits/stream/results \
+  --header 'authorization: Bearer <access_token>' \
+  --header 'content-type: application/json' \
+  --header 'x-api-key: <api-key>' \
+  --data '{
+  "cursorRef": "<cursor_ref>"
+}'
+```
+
+## Plan
+
 * Access google storage container
 
 * Time assignment:
