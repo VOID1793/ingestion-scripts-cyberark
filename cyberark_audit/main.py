@@ -63,77 +63,55 @@ def build_query_body(start_date: str) -> str:
 
 
 
-# Function to authenticate to the CyberArk SIEM Web Application in Identity and retrieve an Auth Token
-def get_identity_siem_auth(client_id: str, client_secret: str, id_subdomain: str, siem_app_id: str) -> str:
-    print("Authenticating to Identity's SIEM WebApplication... ")
+# Function to authenticate to the CyberArk SIEM Web Application in Identity and retrieve an Auth Token to grab a log payload from Audit
+def get_log_payload(client_id: str, client_secret: str, id_subdomain: str, siem_app_id: str, audit_subdomain: str, audit_api_key: str, query: str) -> str:
+    
     siem_url = f"https://{id_subdomain}.id.cyberark.cloud/OAuth2/token/{siem_app_id}" 
-    
-    try:
-        id_auth = HTTPBasicAuth(client_id, client_secret)
-        scope   = "isp.audit.events:read"
-        client  = BackendApplicationClient(client_id=client_id, scope=scope)
-        oauth2  = OAuth2Session(client=client, scope=scope)
-        token_payload   = oauth2.fetch_token(token_url=siem_url, auth=id_auth)
-        token_data = token_payload.get("access_token")
-
-        return token_data
-    except:
-        print("An error with your request occurred. Please check your given subdomain and app_id! ")
-        sys.exit()
-
-    
-
-# Function to retrieve a CursorRef from Audit that represents the query for the range assigned
-def get_logs(query: str, audit_subdomain: str, audit_api_key: str, bearer_token: str) -> str:
-    print("Retrieving cursor reference... ")
 
     audit_cursor_url = f"https://{audit_subdomain}.audit.cyberark.cloud/api/audits/stream/createQuery"
     audit_results_url = f"https://{audit_subdomain}.audit.cyberark.cloud/api/audits/stream/results"
-
+    
     audit_headers = {
-        "Authorization" : f"Bearer {bearer_token}",
-        "x-api-key"     : audit_api_key,
-        "Content-Type"  : "application/json"
+        "x-api-key": audit_api_key
     }
 
-    try:
-        audit_response = requests.post(
-            url=audit_cursor_url,
-            
-            data=query,
+    
+    print("Authenticating to Identity's SIEM WebApplication... ")
 
-            headers=audit_headers
+    id_auth = HTTPBasicAuth(client_id, client_secret)
+    scope   = "isp.audit.events:read"
+    client  = BackendApplicationClient(client_id=client_id, scope=scope)
+    oauth2  = OAuth2Session(client=client)
+    
+    oauth2.fetch_token(
+        token_url = siem_url,
+        auth      = id_auth
+    )
+
+    try:
+        print("Retrieving cursor reference... ")
+        cursor_response = oauth2.post(
+            url     = audit_cursor_url,
+            data    = query,
+            headers = audit_headers
         )
 
-        if audit_response.status_code == 200:
-        
-            cursorRef = audit_response.json()
-            print("Retrieving log payload... ")
+        cursorRef = cursor_response.json()
+        body = {"cursorRef" : (cursorRef.get("cursorRef"))}
+        print("Retrieving log payload... ")
+        log_response = oauth2.post(
+            url     = audit_results_url,
+            json    = body,
+            headers = audit_headers
+        )
 
-            body = {"cursorRef" : (cursorRef.get("cursorRef"))}
-            
-            try:
-                log_payload_response = requests.post(
-                    url=audit_results_url,
+        logs = log_response.json()
+    except:
+        print("Error")
 
-                    json=body,
 
-                    headers=audit_headers
-                )
 
-                if log_payload_response.status_code == 200:
-
-                    log_payload = log_payload_response.json()
-
-                    return log_payload
-                    
-            except requests.exceptions.RequestException as exc:
-                print("Network/HTTP error:", str(exc))
-        else:
-            print(audit_response.json())
-
-    except requests.exceptions.RequestException as exc:
-        print("Network/HTTP error:", str(exc))
+    return logs
 
 
 
@@ -149,11 +127,18 @@ def get_logs(query: str, audit_subdomain: str, audit_api_key: str, bearer_token:
 
 # Main function
 def main():
-    token = get_identity_siem_auth(CYBERARK_OAUTH_CLIENT_ID, CYBERARK_OAUTH_CLIENT_SECRET, CYBERARK_IDENTITY_SUBDOMAIN, CYBERARK_IDENTITY_SIEM_APP_ID)
-
+    
     query = build_query_body("dummy")
 
-    logs = get_logs(query, CYBERARK_ISPSS_SUBDOMAIN, CYBERARK_AUDIT_API_KEY, token)
+    logs = get_log_payload(
+        CYBERARK_OAUTH_CLIENT_ID, 
+        CYBERARK_OAUTH_CLIENT_SECRET, 
+        CYBERARK_IDENTITY_SUBDOMAIN, 
+        CYBERARK_IDENTITY_SIEM_APP_ID, 
+        CYBERARK_ISPSS_SUBDOMAIN, 
+        CYBERARK_AUDIT_API_KEY, 
+        query
+    )
     
     with open('audit.json', 'w') as f:
         json.dump(logs, f, indent=4)
