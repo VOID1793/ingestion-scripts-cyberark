@@ -16,8 +16,7 @@ from requests_oauthlib import OAuth2Session
 from requests.auth import HTTPBasicAuth
 
 # from google.cloud import storage
-
-sys.path.append("..")
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from common import ingest
 from common import utils
