@@ -7,6 +7,7 @@
 
 import json
 import os # For TESTING! with outfiles!
+import sys
 import base64
 from datetime import datetime, timezone
 import requests
@@ -16,8 +17,10 @@ from requests.auth import HTTPBasicAuth
 
 # from google.cloud import storage
 
-# from common import ingest
-# from common import utils
+sys.path.append("..")
+
+from common import ingest
+from common import utils
 
 
 # CyberArk Identity Basic Auth. ID
@@ -116,8 +119,8 @@ def get_log_payload(client_id: str, client_secret: str, id_subdomain: str, siem_
 
 
 # Function to tag and send the logs to SecOps
-# def send_log(log_json: str) -> str:
-
+def send_log(log_json: str) -> str:
+    print("hello")
 
 
 # Function to update the Google BLOB with the new data/time range
